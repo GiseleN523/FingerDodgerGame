@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Finger Dodger Game</title>
+        <script src="p5.min.js"></script>
+        <script src="https://unpkg.com/ml5@1.2.1/dist/ml5.js"></script>
+    </head>
+    <body>
+        <script>
+
+            // Extended from ML5's HandPose example code
+
+            let canvasW = 640;
+            let canvasH = 480;
+            let handPose;
+            let video;
+            let hands = [];
+            let player = {x: canvasW/2, y: canvasH-100};
+            let obstacles = [];
+            let speed = 1; // the number of pixels bricks move at each redraw (increases as game progresses)
+            let newBrickProb = 0.01; // the chance of a new brick being generated at each redraw (increases as game progresses)
+            let bricksDodged = 0;
+
+            function preload() {
+                // Load the handPose model
+                handPose = ml5.handPose({flipped: true});
+                playerImage = loadImage("player.png");
+            }
+
+            function setup() {
+                createCanvas(canvasW, canvasH);
+                // Create the webcam video and hide it
+                video = createCapture(VIDEO, {flipped: true});
+                video.size(canvasW, canvasH);
+                video.hide();
+                // Start detecting hands from the webcam video
+                handPose.detectStart(video, gotHands);
+                obstacles.push(new Obstacle());
+            }
+
+            function draw() {
+
+                if(!gameOver()) {
+                    // Draw the webcam video
+                    image(video, 0, 0, canvasW, canvasH);
+
+                    if(hands.length > 0) {
+                        let finger = hands[0].index_finger_tip;
+                        player.x = finger.x;
+                        player.y = finger.y;
+                        speed += 0.005;
+                        newBrickProb += 0.00002;
+                        if(Math.random() < newBrickProb) {
+                            obstacles.push(new Obstacle());
+                        }
+                    }
+                    fill('#5b56b9');
+                    textSize(20);
+                    text(bricksDodged + " bricks", canvasW-60, 20);
+                    image(playerImage, player.x-50, canvasH-100);
+                    for(let i=0; i<obstacles.length; i++) {
+                        obstacles[i].show(hands.length > 0);
+                        if(obstacles[i].y > height) {
+                            obstacles.splice(i, 1);
+                            bricksDodged += 1;
+                        }
+                    };
+                    if(hands.length == 0) {
+                        textAlign(CENTER, CENTER);
+                        fill('black');
+                        strokeWeight(3);
+                        stroke('white');
+                        textSize(30);
+                        text("Error: Hand not detected by camera", canvasW/2, (canvasH/2)-50);
+                        text("Use your index finger to dodge the bricks!", canvasW/2, (canvasH/2)+50);
+                    }
+                }
+                else {
+                    textAlign(CENTER, CENTER);
+                    fill('black');
+                    stroke('white');
+                    textSize(50);
+                    text("Game Over!", canvasW/2, (canvasH/2)-50);
+                    text("Bricks Dodged: " + bricksDodged, canvasW/2, (canvasH/2)+50);
+                }
+            }
+
+            // Callback function for when handPose outputs data
+            function gotHands(results) {
+                // Save the output to the hands variable
+                hands = results;
+            }
+
+            function gameOver() {
+                for(let i=0; i<obstacles.length; i++) {
+                    let o = obstacles[i];
+                    if(player.x > o.x && player.x < o.x+o.w && player.y > o.y && player.y < o.y+o.h) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            class Obstacle {
+                constructor() {
+                    this.w = (Math.random()*100)+40;
+                    this.h = (Math.random()*60)+20;
+                    this.x = Math.random()*(width-this.w);
+                    this.y = 0-this.h; // start it just off-screen
+                    this.r = int(Math.random()*256);
+                    this.g = int(Math.random()*256);
+                    this.b = int(Math.random()*256);
+                }
+
+                show(movePosition) {
+                    if(!gameOver() && movePosition) {
+                        this.y += speed;
+                    }
+                    fill(this.r, this.g, this.b);
+                    rect(this.x, this.y, this.w, this.h);
+                }
+            }
+
+        </script>
+    </body>
+</html>
