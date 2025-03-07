@@ -24,9 +24,25 @@
                 background-color: black;
                 color: white;
             }
+            #infoButton {
+                font-size: 150%;
+                background-color: white;
+                color: black;
+                padding: .2em .5em;
+                border-radius: 5px;
+            }
+            #infoButton:hover {
+                background-color: black;
+                color: white;
+                cursor: pointer;
+            }
+            #infoBox {
+                height: 100vh;
+                font-size: 150%;
+                padding: 10%;
+                display: none;
+            }
         </style>
-    </head>
-    <body>
         <script>
 
             // Extended from ML5's HandPose example code
@@ -40,6 +56,8 @@
             let newBrickProb; // the chance of a new brick being generated at each redraw (increases as game progresses)
             let bricksDodged;
             let button;
+            let infoButton;
+            let infoBoxOpen = false;
 
             // load ml5 handpose and player image; set width and height variables based on image
             function preload() {
@@ -55,6 +73,12 @@
                 video = createCapture(VIDEO, {flipped: true});
                 video.size(width, height);
                 video.hide();
+
+                infoButton = createButton('?');
+                infoButton.id("infoButton");
+                infoButton.position(10, 20);
+                infoButton.mousePressed(() => infoBoxOpen = !infoBoxOpen);
+
                 button = createButton('Play Again!');
                 button.position(width/2, -150); // keep the button out of view until the game ends
                 button.mousePressed(resetVals);
@@ -82,56 +106,62 @@
             }
 
             function draw() {
+                
+                if(infoBoxOpen) {
+                    document.getElementById("infoBox").style.display = "block";
+                }
+                else {
+                    document.getElementById("infoBox").style.display = "none";
+                    // if the game isn't over, draw video, hidden button, bricks, # of bricks dodged text, and player
+                    if(!gameOver()) {
+                        image(video, 0, 0, width, height);
+                        button.position(width/2, -150);
 
-                // if the game isn't over, draw video, hidden button, bricks, # of bricks dodged text, and player
-                if(!gameOver()) {
-                    image(video, 0, 0, width, height);
-                    button.position(width/2, -150);
-
-                    // if there is a hand showing, adjust player position based on index finger
-                    // increase brick speed, probability of new brick, and randomly determine whether a new brick appears
-                    if(hands.length > 0) {
-                        let finger = hands[0].index_finger_tip;
-                        player.x = finger.x + (player.w/2);
-                        speed += 0.002;
-                        newBrickProb += 0.00002;
-                        if(Math.random() < newBrickProb) {
-                            bricks.push(new Brick());
+                        // if there is a hand showing, adjust player position based on index finger
+                        // increase brick speed, probability of new brick, and randomly determine whether a new brick appears
+                        if(hands.length > 0) {
+                            let finger = hands[0].index_finger_tip;
+                            player.x = finger.x + (player.w/2);
+                            speed += 0.002;
+                            newBrickProb += 0.00002;
+                            if(Math.random() < newBrickProb) {
+                                bricks.push(new Brick());
+                            }
+                        }
+                        fill('#5b56b9');
+                        textSize(20);
+                        text(bricksDodged + " bricks", width-60, 20);
+                        image(playerImage, player.x, player.y);
+                        for(let i=0; i<bricks.length; i++) {
+                            bricks[i].show(hands.length > 0);
+                            if(bricks[i].y > height) { // remove brick if it has fallen past window height
+                                bricks.splice(i, 1);
+                                bricksDodged += 1;
+                            }
+                        };
+                        // show error message if there is no hand in view
+                        if(hands.length == 0) {
+                            textAlign(CENTER, CENTER);
+                            fill('black');
+                            strokeWeight(3);
+                            stroke('white');
+                            textSize(30);
+                            text("Error: Hand not detected by camera", width/2, (height/2)-50);
+                            text("Use your index finger to dodge the bricks!", width/2, (height/2)+50);
                         }
                     }
-                    fill('#5b56b9');
-                    textSize(20);
-                    text(bricksDodged + " bricks", width-60, 20);
-                    image(playerImage, player.x, player.y);
-                    for(let i=0; i<bricks.length; i++) {
-                        bricks[i].show(hands.length > 0);
-                        if(bricks[i].y > height) { // remove brick if it has fallen past window height
-                            bricks.splice(i, 1);
-                            bricksDodged += 1;
-                        }
-                    };
-                    // show error message if there is no hand in view
-                    if(hands.length == 0) {
+                    // if game is over, continue to show bricks but don't update video
+                    // display game over text, final score, and move button into view
+                    else {
+                        bricks.forEach((b) => b.show(false));
                         textAlign(CENTER, CENTER);
                         fill('black');
-                        strokeWeight(3);
                         stroke('white');
-                        textSize(30);
-                        text("Error: Hand not detected by camera", width/2, (height/2)-50);
-                        text("Use your index finger to dodge the bricks!", width/2, (height/2)+50);
+                        textSize(50);
+                        text("Game Over!", width/2, (height/2)-175);
+                        text("Bricks Dodged: " + bricksDodged, width/2, (height/2)-75);
+                        button.position((width/2)-(button.width/2), height/2);
                     }
-                }
-                // if game is over, continue to show bricks but don't update video
-                // display game over text, final score, and move button into view
-                else {
-                    bricks.forEach((b) => b.show(false));
-                    textAlign(CENTER, CENTER);
-                    fill('black');
-                    stroke('white');
-                    textSize(50);
-                    text("Game Over!", width/2, (height/2)-175);
-                    text("Bricks Dodged: " + bricksDodged, width/2, (height/2)-75);
-                    button.position((width/2)-(button.width/2), height/2);
                 }
             }
 
@@ -173,5 +203,13 @@
                 }
             }
         </script>
+    </head>
+    <body>
+        <div id="infoBox">
+            This game was written in Winter of 2025 for my Creative Coding and Generative AI class. It uses the P5 Javascript 
+            library and ML5 Handpose finger/hand tracking. Turn on your camera and use your index finger to control the character 
+            at the bottom of the screen and avoid the bricks! Basic functionality based on ML5's handpose demo.<br><br>
+            See the code <a href="https://github.com/GiseleN523/FingerDodgerGame" target="_blank">on Github!</a>
+        </div>
     </body>
 </html>
